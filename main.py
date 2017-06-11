@@ -5,7 +5,7 @@ from fnmatch import fnmatch
 from pyPdf import PdfFileReader
 from searchISBN import *
 
-root = '/home/mattia/Nextcloud/Università/Libreria/'
+root = '/home/mattia/ownCloud/Università/Libreria/'
 pattern = "*"
 
 type_stat = {}
@@ -20,7 +20,13 @@ for path, subdirs, files in os.walk(root):
             #print os.path.join(path, name)
             total_files += 1
             #file type analysis
-            ftype = magic.from_file( os.path.join(path, name), mime=True)
+            try:
+                ftype = magic.from_file( os.path.join(path, name), mime=True)
+            except:
+                f = open( os.path.join(path, name), "r")
+                ftype = magic.detect_from_fobj( f ).mime_type
+                f.close()
+
             #print "File type: ", ftype
             if ftype in type_stat:
                 type_stat[ftype] += 1
