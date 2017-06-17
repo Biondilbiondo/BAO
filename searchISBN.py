@@ -32,7 +32,7 @@ def evilMetadataFromISBN( isbn ):
     I simply download the whole page (it's not a true research, I just suppose that
     the page exist..) and search for the bibtex entry. It is evil and stupid, use
     the API."""
-    
+
     mdt = {}
     answare= commands.getoutput("curl \'http://isbnplus.com/"+isbn+"\' -s")
     pos = answare.find("author={")
@@ -94,7 +94,12 @@ def searchISBNstrings( path ):
         #print cnt[pos:pos+23],
         strippedisbn = re.sub("\D", "", cnt[pos:pos+23])
         if not any( strippedisbn in s for s in out ):
-            out.append(strippedisbn)
+            if len ( strippedisbn ) == 10 or len( strippedisbn ) == 13:
+                out.append(strippedisbn)
+            elif len( strippedisbn ) == 12 and strippedisbn[0:2] == '10':
+                out.append(strippedisbn[2:12])
+            elif len( strippedisbn ) == 15 and strippedisbn[0:2] == '13':
+                out.append(strippedisbn[2:15])
         bg = pos
         pos = cnt.find("ISBN", bg+1 )
     if len( out ) == 0:
