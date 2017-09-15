@@ -5,7 +5,7 @@ from fnmatch import fnmatch
 from pyPdf import PdfFileReader
 from searchISBN import *
 
-root = '/home/mattia/ownCloud/Università/Libreria/'
+root = '/home/mattia/Nextcloud/Università/Libreria/'
 pattern = "*"
 
 type_stat = {}
@@ -19,7 +19,8 @@ for path, subdirs, files in os.walk(root):
         if fnmatch(name, pattern):
             #print os.path.join(path, name)
             total_files += 1
-            #file type analysis
+            #file type analysis, the try / except is to manage different version
+            #of the magic library. Should be implemented in a safer way.
             try:
                 ftype = magic.from_file( os.path.join(path, name), mime=True)
             except:
@@ -57,7 +58,11 @@ for path, subdirs, files in os.walk(root):
                 else :
                     current_book['title'] = None
 
-                ISBNstrings = searchISBNstrings(os.path.join(path, name) )
+                ISBNstrings = searchISBNstrings(os.path.join(path, name), True )
+                if ISBNstrings is None:
+                    print "\x1b[31m No ISBN string found. \x1b[0m"
+                else:
+                    print "\x1b[34m Found", len(ISBNstrings),"ISBN strings.\x1b[0m"
                 current_book['isbn'] = ISBNstrings
 
                 books.append(current_book)
@@ -85,8 +90,7 @@ for book in books:
     print "\tFound ISBN: "
     if book['isbn'] is not None:
         for isbn in book['isbn']:
-            #This function is evil. It shouldn't be used.
-            mdt = evilMetadataFromISBN( isbn )
+            mdt = metadataFromISBN( isbn )
             if mdt['author'] is not '' and mdt['title'] is not '':
                 print "\x1b[34m",
             else:

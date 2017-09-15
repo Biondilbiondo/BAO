@@ -1,10 +1,10 @@
 import PyPDF2
-import pycurl
 import cStringIO
-import json
-import sys
+import sys, os
 import re
 import commands
+import xmltodict as xmlparser
+from pypdfocr import pypdfocr as pypdfocr
 
 ISBNPLUS_APP_ID = 'd6303441'
 ISBNPLUS_APP_KEY = '07b60ccae2f7f2bb0e8acbc1dbbeb540'
@@ -51,22 +51,23 @@ def evilMetadataFromISBN( isbn ):
     return mdt
 
 def metadataFromISBN( isbn ):
-    buf = cStringIO.StringIO()
+    query = 'https://api-2445581351187.apicast.io/search?q='+isbn+'&app_id='+ISBNPLUS_APP_ID+'&app_key='+ISBNPLUS_APP_KEY
+    body = commands.getoutput("curl \'"+query+"\' -s")
+    xmld = xmlparser.parse( body )
 
-    c = pycurl.Curl()
-    c.setopt(c.URL, 'https://api-2445581351187.apicast.io/search?q='+isbn+'&app_id='+ISBNPLUS_APP_ID+'&app_key='+ISBNPLUS_APP_KEY)
-    c.setopt(c.WRITEFUNCTION, buf.write)
-    c.perform()
-    #print buf.getvalue()
+    mtd = {}
+    mtd['author']=''
+    mtd['title'] =''
+    print xmld['response']['page']['total']
+    if int(xmld['response']['page']['total']) > 0:
+        if  type( xmld['response']['page']['results']['book'] ) == list :
+            mtd['title'] = xmld['response']['page']['results']['book'][0]['title']
+            mtd['author'] = xmld['response']['page']['results']['book'][0]['author']
+        else:
+            mtd['title'] = xmld['response']['page']['results']['book']['title']
+            mtd['author'] = xmld['response']['page']['results']['book']['author']
+    return mtd
 
-    answare = buf.getvalue()
-
-    if isValidISBNPLUSAnsware( answare ):
-        ##
-        buf.close()
-        return metadata
-    else:
-        return None
 
 def metadataISBNGetAuthor( mdt ):
     if 'author' in mdt['list'][0]:
@@ -80,13 +81,23 @@ def metadataISBNGetTitle( mdt ):
     else:
         return None
 
-def searchISBNstrings( path ):
+def searchISBNstrings( path, ocr_enable = True ):
     try:
         cnt = getPDFContent(path).encode("ascii", "ignore")
     except:
-        #print "Can't get the text from PDF."
+        print "Can't get the text from PDF."
         return None
     #print cnt
+    if len( cnt ) == 0 and ocr_enable:
+        print "No text layer."
+        print "Executing OCR on first and last 10 pages..."
+        stripFirstAndLast10Pages( path, '/tmp/stripped.pdf' )
+        ocr = pypdfocr.PyPDFOCR()
+        ocr.go( ['/tmp/stripped.pdf'] )
+        return searchISBNstrings( '/tmp/stripped_ocr.pdf', False )
+        os.remove('/tmp/stripped.pdf')
+        os.remove('/tmp/stripped_ocr.pdf')
+
     bg = 0
     out = []
     pos = cnt.find("ISBN")
@@ -106,3 +117,30 @@ def searchISBNstrings( path ):
         return None
     else:
         return out
+
+
+def stripFirstAndLast10Pages( infile, outfile ):
+    #Prova ad aprire il file di input
+    try:
+        book = PyPDF2.PdfFileReader( infile )
+    except:
+        print 'Non e\' stato possibile aprire il file di input specificato, controlla l\'indirizzo e i permessi',
+        print 'di accesso al file.'
+        exit()
+        #Prova ad aprire il file di output
+    #Prova ad aprire il file di output
+    try:
+        outf = open( outfile, "wb+" )
+    except:
+        print 'Non e\' stato possibile creare il file di output specificato, controlla i permessi',
+        print 'di scrittura nella cartella specificata.'
+        exit()
+
+    stripped_book = PyPDF2.PdfFileWriter()
+    for i in range( 10 ):
+        stripped_book.addPage( book.getPage( i ) )
+    num_pg = book.getNumPages()
+    for i in range( 10 ):
+        stripped_book.addPage( book.getPage( num_pg - i - 1 ) )
+    stripped_book.write(outf)
+    outf.close()
