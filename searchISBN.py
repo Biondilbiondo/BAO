@@ -4,6 +4,7 @@ import sys, os
 import re
 import commands
 import xmltodict as xmlparser
+import slate
 from pypdfocr import pypdfocr as pypdfocr
 
 ISBNPLUS_APP_ID = 'd6303441'
@@ -24,31 +25,7 @@ def isValidISBNAnsware( metadata ):
         metadata = json.loads( answare )
     except:
         return False
-
     return True
-
-def evilMetadataFromISBN( isbn ):
-    """To avoid to use the official API (it require some time for activation),
-    I simply download the whole page (it's not a true research, I just suppose that
-    the page exist..) and search for the bibtex entry. It is evil and stupid, use
-    the API."""
-
-    mdt = {}
-    answare= commands.getoutput("curl \'http://isbnplus.com/"+isbn+"\' -s")
-    pos = answare.find("author={")
-    d=0
-    if pos != -1:
-        while answare[pos+d] != '}':
-            d = d+1
-    mdt['author'] = answare[pos+8:pos+d]
-
-    pos = answare.find("title={")
-    d=0
-    if pos != -1:
-        while answare[pos+d] != '}':
-            d = d+1
-    mdt['title'] = answare[pos+7:pos+d]
-    return mdt
 
 def metadataFromISBN( isbn ):
     query = 'https://api-2445581351187.apicast.io/search?q='+isbn+'&app_id='+ISBNPLUS_APP_ID+'&app_key='+ISBNPLUS_APP_KEY
@@ -58,7 +35,6 @@ def metadataFromISBN( isbn ):
     mtd = {}
     mtd['author']=''
     mtd['title'] =''
-    print xmld['response']['page']['total']
     if int(xmld['response']['page']['total']) > 0:
         if  type( xmld['response']['page']['results']['book'] ) == list :
             mtd['title'] = xmld['response']['page']['results']['book'][0]['title']
@@ -81,29 +57,52 @@ def metadataISBNGetTitle( mdt ):
     else:
         return None
 
-def searchISBNstrings( path, ocr_enable = True ):
-    try:
-        cnt = getPDFContent(path).encode("ascii", "ignore")
-    except:
-        print "Can't get the text from PDF."
-        return None
-    #print cnt
-    if len( cnt ) == 0 and ocr_enable:
-        print "No text layer."
-        print "Executing OCR on first and last 10 pages..."
-        stripFirstAndLast10Pages( path, '/tmp/stripped.pdf' )
-        ocr = pypdfocr.PyPDFOCR()
-        ocr.go( ['/tmp/stripped.pdf'] )
-        return searchISBNstrings( '/tmp/stripped_ocr.pdf', False )
-        os.remove('/tmp/stripped.pdf')
-        os.remove('/tmp/stripped_ocr.pdf')
+def pdf_to_text(_pdf_file_path):
+    pdf_content = PyPDF2.PdfFileReader(file(_pdf_file_path, "rb"))
+    text_extracted = ""
+    for x in range(0, 20):
+        pdf_text = ""  # A variable to store text extracted from a page
+        pdf_text = pdf_text + pdf_content.getPage(x).extractText()
+        text_extracted = text_extracted + "\n\n\n"
+    num_pg = book.getNumPages()
+    for x in range(num_pg-21, num_pg-1):
+        pdf_text = ""  # A variable to store text extracted from a page
+        pdf_text = pdf_text + pdf_content.getPage(x).extractText()
+        text_extracted = text_extracted + "\n\n\n"
+    return text_extracted
 
+def getTextFromMetadata( path ):
+    return getPDFContent(path).encode("ascii", "ignore")
+
+def getTextWithSlate( path ):
+    stripFirstAndLast10Pages( path, '/tmp/stripped.pdf' )
+    f = open('/tmp/stripped.pdf', "r")
+    texts=slate.PDF(f)
+    cnt = ""
+    for pg in texts:
+        cnt+=pg
+    f.close()
+    os.remove('/tmp/stripped.pdf')
+    return cnt
+
+def getTextWithOCR( path ):
+    stripFirstAndLast10Pages( path, '/tmp/stripped.pdf' )
+    ocr = pypdfocr.PyPDFOCR()
+    ocr.go( ['/tmp/stripped.pdf'] )
+    os.remove('/tmp/stripped.pdf')
+    cnt = getTextFromMetadata( '/tmp/stripped_ocr.pdf' )
+    os.remove('/tmp/stripped_ocr.pdf')
+    return cnt
+
+
+def searchISBNstrings( cnt):
     bg = 0
     out = []
+    #Da migliorare!
     pos = cnt.find("ISBN")
     while pos != -1 :
-        #print cnt[pos:pos+23],
-        strippedisbn = re.sub("\D", "", cnt[pos:pos+23])
+        print "\x1b[33m[debug]\x1b[0m\t\tISBN string detected:", cnt[pos:pos+28]
+        strippedisbn = re.sub("\D", "", cnt[pos:pos+28])
         if not any( strippedisbn in s for s in out ):
             if len ( strippedisbn ) == 10 or len( strippedisbn ) == 13:
                 out.append(strippedisbn)
@@ -124,7 +123,7 @@ def stripFirstAndLast10Pages( infile, outfile ):
     try:
         book = PyPDF2.PdfFileReader( infile )
     except:
-        print 'Non e\' stato possibile aprire il file di input specificato, controlla l\'indirizzo e i permessi',
+        print '[Tesseract]\tNon e\' stato possibile aprire il file di input specificato, controlla l\'indirizzo e i permessi',
         print 'di accesso al file.'
         exit()
         #Prova ad aprire il file di output

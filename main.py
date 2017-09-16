@@ -4,8 +4,9 @@ import magic
 from fnmatch import fnmatch
 from pyPdf import PdfFileReader
 from searchISBN import *
+import re
 
-root = '/home/mattia/Nextcloud/Università/Libreria/'
+root = '/home/mattia/Nextcloud/Università/Libreria'
 pattern = "*"
 
 type_stat = {}
@@ -36,7 +37,7 @@ for path, subdirs, files in os.walk(root):
 
             #file metadata analysis
             if ftype == 'application/pdf':
-                print "Analyzing " + os.path.join(path, name) + " ..."
+                print "[analyzing]\t" + os.path.join(path, name) + " ..."
                 current_book = {}
                 current_book['path'] = os.path.join(path, name)
                 f = open( os.path.join(path, name), "rb" )
@@ -58,11 +59,46 @@ for path, subdirs, files in os.walk(root):
                 else :
                     current_book['title'] = None
 
-                ISBNstrings = searchISBNstrings(os.path.join(path, name), True )
-                if ISBNstrings is None:
-                    print "\x1b[31m No ISBN string found. \x1b[0m"
+                print "[ISBNsrch]\tTrying extracting text from metadata."
+                try:
+                    cnt = getTextFromMetadata( os.path.join(path, name) )
+                    if len( cnt ) != 0:
+                        print "[ISBNsrch]\tText layer extracted."
+                except:
+                    cnt = ""
+
+                if len( cnt ) == 0:
+                    print "[ISBNsrch]\tFailed extracting text from metadata."
+                    print "[ISBNsrch]\tTrying extracting text with slate."
+                    try:
+                        cnt = getTextWithSlate( os.path.join(path, name) )
+                        if len( cnt.replace(chr(12), '' ) ) != 0:
+                            print "[ISBNsrch]\tText layer extracted."
+                        else:
+                            cnt = ''
+                    except:
+                        cnt = ""
+
+                if len( cnt ) == 0:
+                    print "[ISBNsrch]\tFailed extracting text with slate."
+                    print "[ISBNsrch]\tNo text layer."
+                    print "[ISBNsrch]\tExecuting OCR on first and last 10 pages..."
+                    try:
+                        cnt = getTextWithOCR( os.path.join(path, name) )
+                        if len( cnt ) != 0:
+                            print "[ISBNsrch]\tText layer extracted."
+                    except:
+                        cnt = ""
+
+                if len( cnt ) == 0:
+                    print "[ISBNsrch]\tFailed extracting text with Tesseract"
                 else:
-                    print "\x1b[34m Found", len(ISBNstrings),"ISBN strings.\x1b[0m"
+                    ISBNstrings = searchISBNstrings( cnt )
+
+                if ISBNstrings is None:
+                    print "[ISBNsrch]\t\x1b[31m No ISBN string found. \x1b[0m"
+                else:
+                    print "[ISBNsrch]\t\x1b[34m Found", len(ISBNstrings),"ISBN strings.\x1b[0m"
                 current_book['isbn'] = ISBNstrings
 
                 books.append(current_book)
@@ -95,7 +131,7 @@ for book in books:
                 print "\x1b[34m",
             else:
                 print "\x1b[31m",
-            print "\t\t",isbn,
+            print "\t\t\t",isbn,
             print "\x1b[0m",
 
             if mdt['author'] is not '' and mdt['title'] is not '':
