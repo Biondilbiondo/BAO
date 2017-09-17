@@ -112,7 +112,7 @@ def searchISBNstrings( cnt ):
                      out.append( strippedisbn[0:10] )
                      print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
                      printMetadataForISBN( out[len(out)-1] )
-            elif strippedisbn[0:2] == '13':#Puo' essere un ISBN10 che comincia con 13 oppure un ISBN13 con 13 davanti
+            elif strippedisbn[0:2] == '13':#Puo' essere un ISBN10 che comincia con 13 oppure un ISBN13 con 13 davanti. Non può essere ISBN13 che inizia con 13 perché le prime 3 cifre sono sempre 978 per ISBN13
                 print "\x1b[33m[debug]\x1b[0m\t\tPenso sia un ISBN13."
                 if checkISBN10( strippedisbn[0:10] ):
                      out.append( strippedisbn[0:10] )
