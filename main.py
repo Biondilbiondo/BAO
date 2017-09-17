@@ -2,11 +2,11 @@
 import os
 import magic
 from fnmatch import fnmatch
-from pyPdf import PdfFileReader
+from PyPDF2 import PdfFileReader
 from searchISBN import *
 import re
 
-root = '/home/mattia/Nextcloud/Università/Libreria'
+root = '/home/pol/Archive/findISBN/'
 pattern = "*"
 
 type_stat = {}
@@ -42,9 +42,15 @@ for path, subdirs, files in os.walk(root):
                 current_book['path'] = os.path.join(path, name)
                 f = open( os.path.join(path, name), "rb" )
                 pdf_toread = PdfFileReader( f )
-                if pdf_toread.isEncrypted:
-                    pdf_toread.decrypt('')
-                pdf_info = pdf_toread.getDocumentInfo()
+                try:
+                    if pdf_toread.isEncrypted:
+                        pdf_toread.decrypt('')
+                except:
+                    print "[decrypt]\tFailed decryption"
+                try:
+                    pdf_info = pdf_toread.getDocumentInfo()
+                except:
+                    pdf_info = {}
                 for mdt in pdf_info.keys():
                     if mdt in metadata:
                         metadata[mdt] += 1

@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import PyPDF2
 import cStringIO
 import sys, os
