@@ -57,20 +57,6 @@ def metadataISBNGetTitle( mdt ):
     else:
         return None
 
-def pdf_to_text(_pdf_file_path):
-    pdf_content = PyPDF2.PdfFileReader(file(_pdf_file_path, "rb"))
-    text_extracted = ""
-    for x in range(0, 20):
-        pdf_text = ""  # A variable to store text extracted from a page
-        pdf_text = pdf_text + pdf_content.getPage(x).extractText()
-        text_extracted = text_extracted + "\n\n\n"
-    num_pg = book.getNumPages()
-    for x in range(num_pg-21, num_pg-1):
-        pdf_text = ""  # A variable to store text extracted from a page
-        pdf_text = pdf_text + pdf_content.getPage(x).extractText()
-        text_extracted = text_extracted + "\n\n\n"
-    return text_extracted
-
 def getTextFromMetadata( path ):
     return getPDFContent(path).encode("ascii", "ignore")
 
@@ -95,28 +81,118 @@ def getTextWithOCR( path ):
     return cnt
 
 
-def searchISBNstrings( cnt):
+def searchISBNstrings( cnt ):
     bg = 0
     out = []
     #Da migliorare!
     pos = cnt.find("ISBN")
     while pos != -1 :
-        print "\x1b[33m[debug]\x1b[0m\t\tISBN string detected:", cnt[pos:pos+28]
-        strippedisbn = re.sub("\D", "", cnt[pos:pos+28])
-        if not any( strippedisbn in s for s in out ):
-            if len ( strippedisbn ) == 10 or len( strippedisbn ) == 13:
-                out.append(strippedisbn)
-            elif len( strippedisbn ) == 12 and strippedisbn[0:2] == '10':
-                out.append(strippedisbn[2:12])
-            elif len( strippedisbn ) == 15 and strippedisbn[0:2] == '13':
-                out.append(strippedisbn[2:15])
+        old_len=len(out)
+        print "\x1b[33m[debug]\x1b[0m\t\tISBN string detected:\x1b[1m", cnt[pos:pos+40], "\x1b[22m"
+
+        strippedisbn = ''
+        isbnstr=cnt[pos:pos+40]
+        for i in range( len(isbnstr) ):
+            if isbnstr[i].isdigit() :
+                strippedisbn += isbnstr[i]
+            if  isbnstr[i] == 'x' or isbnstr[i] == 'X':#Se e' una X
+                if len(strippedisbn) == 9 or ( len(strippedisbn) == 11 and strippedisbn[0:2] == '10' ):#e se e' nella posizione corretta per essere un carattere di controllo ISBN10
+                    strippedisbn += isbnstr[i]
+
+        #strippedisbn = re.sub("\D", "", cnt[pos:pos+40]) #Elimina i caratteri che non sono numeri
+        print "\x1b[33m[debug]\x1b[0m\t\tStripped ISBN:", strippedisbn
+        if len( strippedisbn ) >= 10: #Se ci sono meno di dieci numeri, boh che cazzo e'?
+            if strippedisbn[0:2] == '10' and len( strippedisbn ) >= 12: #Puo' essere un ISBN10 con 10 davanti o un ISBN 10 senza il 10 davanti
+                print "\x1b[33m[debug]\x1b[0m\t\tPenso sia un ISBN10."
+                if checkISBN10( strippedisbn[2:12] ):
+                     out.append( strippedisbn[2:12] )
+                     print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
+                     printMetadataForISBN( out[len(out)-1] )
+                if checkISBN10( strippedisbn[0:10] ):
+                     out.append( strippedisbn[0:10] )
+                     print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
+                     printMetadataForISBN( out[len(out)-1] )
+            elif strippedisbn[0:2] == '13':#Puo' essere un ISBN10 che comincia con 13 oppure un ISBN13 con 13 davanti
+                print "\x1b[33m[debug]\x1b[0m\t\tPenso sia un ISBN13."
+                if checkISBN10( strippedisbn[0:10] ):
+                     out.append( strippedisbn[0:10] )
+                     print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
+                     printMetadataForISBN( out[len(out)-1] )
+                if checkISBN13( strippedisbn[2:15] ):
+                    out.append( strippedisbn[2:15] )
+                    print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
+                    printMetadataForISBN( out[len(out)-1] )
+            else:
+                print "\x1b[33m[debug]\x1b[0m\t\tNon so se sia un ISBN10 o un ISBN13."
+                if checkISBN13( strippedisbn[0:13] ):
+                    out.append( strippedisbn[0:13] )
+                    print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
+                    printMetadataForISBN( out[len(out)-1] )
+                if checkISBN10( strippedisbn[0:10] ):
+                    out.append( strippedisbn[0:10] )
+                    print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
+                    printMetadataForISBN( out[len(out)-1] )
+        if len(out) == old_len:
+            print "\x1b[33m[debug]\x1b[0m\t\t\x1b[1m\x1b[34mNon ho aggiunto nulla.\x1b[22m\x1b[0m "
         bg = pos
         pos = cnt.find("ISBN", bg+1 )
+
     if len( out ) == 0:
         return None
     else:
         return out
 
+def printMetadataForISBN( isbn ):
+    mdt = metadataFromISBN( isbn )
+    if mdt['author'] is not '' and mdt['title'] is not '':
+        print "( A:\x1b[33m", mdt['author'], "\x1b[0mT:\x1b[32m", mdt['title'], "\x1b[0m)"
+    else:
+        print "\x1b[31mNo metadata found.\x1b[0m"
+
+def checkISBN10( isbn ):
+    if len( isbn ) != 10 :
+        return False
+    if not ( isbn[0:9].isdigit() and ( isbn[9].isdigit() or isbn[9] == 'X' or isbn[9] == 'x' ) ):
+         return False
+
+    checksum = 0
+    multiplier = 10
+    for char in isbn[0:9]:
+        checksum += int( char ) * multiplier
+        multiplier -= 1
+    checksum = ( 11 - ( checksum % 11 ) ) % 11
+    if ( isbn[9] == 'x' or isbn[9] == 'X' ):
+        if checksum == 10:
+            return True
+        else:
+            return False
+    if checksum == int( isbn[9] ):
+        return True
+    return False
+
+def checkISBN13( isbn ):
+    if len( isbn ) != 13 :
+        return False
+    if not isbn[0:9].isdigit() :
+         return False
+
+    checksum = 0
+    multiplier = 1
+    for char in isbn[0:12]:
+        checksum += int( char ) * multiplier
+        if multiplier == 1:
+            multiplier = 3
+        else:
+            multiplier = 1
+
+    checksum = 10 - ( checksum % 10 )
+    if checksum == 10 and int( isbn[12] ) == 0:
+        return True
+    if checksum == int( isbn[12] ):
+        return True
+    if checkISBN10(isbn[3:]): #Spesso trovo ISBN13 con la cifra di controllo non ricalcolata, ovvero la giustapposizione delle tre cifre 978 e dell'ISBN10, cosi' passano come buoni
+        return True
+    return False
 
 def stripFirstAndLast10Pages( infile, outfile ):
     #Prova ad aprire il file di input

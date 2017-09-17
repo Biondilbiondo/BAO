@@ -64,6 +64,8 @@ for path, subdirs, files in os.walk(root):
                     cnt = getTextFromMetadata( os.path.join(path, name) )
                     if len( cnt ) != 0:
                         print "[ISBNsrch]\tText layer extracted."
+                    if cnt.find('ISBN') < 0:#Se non c'è nemmeno una ricorrenza di ISBN, provo a estrarre con slater.
+                        cnt = ''
                 except:
                     cnt = ""
 
@@ -92,6 +94,7 @@ for path, subdirs, files in os.walk(root):
 
                 if len( cnt ) == 0:
                     print "[ISBNsrch]\tFailed extracting text with Tesseract"
+                    ISBNstrings = None
                 else:
                     ISBNstrings = searchISBNstrings( cnt )
 
@@ -119,7 +122,7 @@ for mdt in metadata.keys():
 print "********************************"
 print
 
-for book in books:
+'''for book in books:
     print book['path']
     print "\tAuthor:", book['author']
     print "\tTitle:", book['title']
@@ -142,4 +145,4 @@ for book in books:
             #   cerca il nome dell'autore nel libro e guarda quante ricorrenze ci sono
             #   se ci sono più ISBN verifica che non siano le versioni 10 e 13 dello stesso libro.
 
-            print
+            print'''
