@@ -3,7 +3,7 @@ BAO is a digital book analyzer and organizer. Its major goal relates the impleme
 Actually, you need python2 to run it. In the future it will be fully python3-compatible. We suggest you to set up a python-virtualenv:
 
 ```
-# install virtualenv, it depend on your O.S.
+# install virtualenv, it depends on your O.S.
 $ virtualenv BAO-venv
 $ cd BAO-venv/bin
 $ source activate
