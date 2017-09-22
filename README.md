@@ -1,6 +1,6 @@
-BAO is a digital book analyzer and organizer. Its major goal relates the implementations of a set of functions for automatic classification  of e-books in various formats (pdf, djvu, epub).
+BAO is a digital book analyzer and organizer. Its major goal relates the implementations of a set of functions for automatic classification of e-books in various formats (pdf, djvu, epub).
 
-Actually, you need python2 to run it. In the future it will be fully python3-compatible. We suggest you to set up a python-virtualenv:
+Currently you need python2 to run it. In the future it will be fully python3-compatible. We suggest you to set up a python-virtualenv:
 
 ```
 # install virtualenv, it depends on your O.S.
