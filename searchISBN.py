@@ -8,9 +8,7 @@ import xmltodict as xmlparser
 import slate
 from pypdfocr import pypdfocr as pypdfocr
 
-ISBNPLUS_APP_ID = 'd6303441'
-ISBNPLUS_APP_KEY = '07b60ccae2f7f2bb0e8acbc1dbbeb540'
-
+import isbnPLUS
 
 def getPDFContent(path):
     content = ""
@@ -20,43 +18,6 @@ def getPDFContent(path):
         content += inpdf.getPage(i).extractText() + "\n"
     content = " ".join(content.replace(u"\xa0", " ").strip().split())
     return content
-
-def isValidISBNAnsware( metadata ):
-    try:
-        metadata = json.loads( answare )
-    except:
-        return False
-    return True
-
-def metadataFromISBN( isbn ):
-    query = 'https://api-2445581351187.apicast.io/search?q='+isbn+'&app_id='+ISBNPLUS_APP_ID+'&app_key='+ISBNPLUS_APP_KEY
-    body = commands.getoutput("curl \'"+query+"\' -s")
-    xmld = xmlparser.parse( body )
-
-    mtd = {}
-    mtd['author']=''
-    mtd['title'] =''
-    if int(xmld['response']['page']['total']) > 0:
-        if  type( xmld['response']['page']['results']['book'] ) == list :
-            mtd['title'] = xmld['response']['page']['results']['book'][0]['title']
-            mtd['author'] = xmld['response']['page']['results']['book'][0]['author']
-        else:
-            mtd['title'] = xmld['response']['page']['results']['book']['title']
-            mtd['author'] = xmld['response']['page']['results']['book']['author']
-    return mtd
-
-
-def metadataISBNGetAuthor( mdt ):
-    if 'author' in mdt['list'][0]:
-        return mdt['list'][0]['author']
-    else:
-        return None
-
-def metadataISBNGetTitle( mdt ):
-    if 'title' in mdt['list'][0]:
-        return mdt['list'][0]['title']
-    else:
-        return None
 
 def getTextFromMetadata( path ):
     return getPDFContent(path).encode("ascii", "ignore")
@@ -108,31 +69,31 @@ def searchISBNstrings( cnt ):
                 if checkISBN10( strippedisbn[2:12] ):
                      out.append( strippedisbn[2:12] )
                      print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
-                     printMetadataForISBN( out[len(out)-1] )
+                     isbnPLUS.printMetadataForISBN( out[len(out)-1] )
                 if checkISBN10( strippedisbn[0:10] ):
                      out.append( strippedisbn[0:10] )
                      print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
-                     printMetadataForISBN( out[len(out)-1] )
+                     isbnPLUS.printMetadataForISBN( out[len(out)-1] )
             elif strippedisbn[0:2] == '13':#Puo' essere un ISBN10 che comincia con 13 oppure un ISBN13 con 13 davanti. Non può essere ISBN13 che inizia con 13 perché le prime 3 cifre sono sempre 978 per ISBN13
                 print "\x1b[33m[debug]\x1b[0m\t\tPenso sia un ISBN13."
                 if checkISBN10( strippedisbn[0:10] ):
                      out.append( strippedisbn[0:10] )
                      print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
-                     printMetadataForISBN( out[len(out)-1] )
+                     isbnPLUS.printMetadataForISBN( out[len(out)-1] )
                 if checkISBN13( strippedisbn[2:15] ):
                     out.append( strippedisbn[2:15] )
                     print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
-                    printMetadataForISBN( out[len(out)-1] )
+                    isbnPLUS.printMetadataForISBN( out[len(out)-1] )
             else:
                 print "\x1b[33m[debug]\x1b[0m\t\tNon so se sia un ISBN10 o un ISBN13."
                 if checkISBN13( strippedisbn[0:13] ):
                     out.append( strippedisbn[0:13] )
                     print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
-                    printMetadataForISBN( out[len(out)-1] )
+                    isbnPLUS.printMetadataForISBN( out[len(out)-1] )
                 if checkISBN10( strippedisbn[0:10] ):
                     out.append( strippedisbn[0:10] )
                     print "\x1b[33m[debug]\x1b[0m\t\tAggiunto:\x1b[1m", out[len(out)-1], "\x1b[22m ",
-                    printMetadataForISBN( out[len(out)-1] )
+                    isbnPLUS.printMetadataForISBN( out[len(out)-1] )
         if len(out) == old_len:
             print "\x1b[33m[debug]\x1b[0m\t\t\x1b[1m\x1b[34mNon ho aggiunto nulla.\x1b[22m\x1b[0m "
         bg = pos
@@ -142,13 +103,6 @@ def searchISBNstrings( cnt ):
         return None
     else:
         return out
-
-def printMetadataForISBN( isbn ):
-    mdt = metadataFromISBN( isbn )
-    if mdt['author'] is not '' and mdt['title'] is not '':
-        print "( A:\x1b[33m", mdt['author'], "\x1b[0mT:\x1b[32m", mdt['title'], "\x1b[0m)"
-    else:
-        print "\x1b[31mNo metadata found.\x1b[0m"
 
 def checkISBN10( isbn ):
     if len( isbn ) != 10 :
