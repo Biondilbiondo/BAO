@@ -174,7 +174,7 @@ def checkISBN10( isbn ):
 def checkISBN13( isbn ):
     if len( isbn ) != 13 :
         return False
-    if not isbn[0:9].isdigit() :
+    if not isbn[0:13].isdigit() :
          return False
 
     checksum = 0
