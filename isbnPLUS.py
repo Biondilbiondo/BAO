@@ -47,6 +47,6 @@ def metadataISBNGetTitle( mdt ):
 def printMetadataForISBN( isbn ):
     mdt = metadataFromISBN( isbn )
     if mdt['author'] is not '' and mdt['title'] is not '':
-        print "( A:\x1b[33m", mdt['author'], "\x1b[0mT:\x1b[32m", mdt['title'], "\x1b[0m)"
+        print "( S:ISBN+ A:\x1b[33m", mdt['author'], "\x1b[0mT:\x1b[32m", mdt['title'], "\x1b[0m)",
     else:
-        print "\x1b[31mNo metadata found.\x1b[0m"
+        print "\x1b[31m( S:ISBN+ No metadata found.)\x1b[0m",
