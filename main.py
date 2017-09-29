@@ -6,7 +6,7 @@ from PyPDF2 import PdfFileReader
 from searchISBN import *
 import re
 
-root = '/home/pol/Archive/findISBN/'
+root = '/home/mattia/Nextcloud/Università/Libreria/'
 pattern = "*"
 
 type_stat = {}
@@ -51,6 +51,10 @@ for path, subdirs, files in os.walk(root):
                     pdf_info = pdf_toread.getDocumentInfo()
                 except:
                     pdf_info = {}
+
+                if type( pdf_info ) != dict:
+                    pdf_info = {}
+
                 for mdt in pdf_info.keys():
                     if mdt in metadata:
                         metadata[mdt] += 1
