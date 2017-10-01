@@ -5,9 +5,20 @@ from fnmatch import fnmatch
 from PyPDF2 import PdfFileReader
 from searchISBN import *
 import re
+import argparse
 
-root = '/home/mattia/Nextcloud/Università/Libreria/'
-pattern = "*"
+#-----Argument parsing-------#
+parser = argparse.ArgumentParser( description="BAO takes a directory that contains many pdf files and "
+				"analyzes them, to tag the files with the correct metadata." )
+
+parser.add_argument( 'directory', nargs = 1, type=str, help='The directory that contains the'
+        ' pdf file to analyze', metavar='/directory/' )
+
+parser.add_argument( '-p', '--pattern', nargs = 1,
+         dest='pattern', type=str, required=False, default='*', help='The pattern the file have to match to be'
+         ' analyzed', metavar='path' )
+
+args = parser.parse_args()
 
 type_stat = {}
 total_files = 0.0
@@ -15,9 +26,9 @@ metadata = {}
 
 books = []
 
-for path, subdirs, files in os.walk(root):
+for path, subdirs, files in os.walk(args.directory[0]):
     for name in files:
-        if fnmatch(name, pattern):
+        if fnmatch(name, args.pattern[0]):
             #print os.path.join(path, name)
             total_files += 1
             #file type analysis, the try / except is to manage different version
