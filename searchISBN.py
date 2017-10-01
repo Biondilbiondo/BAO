@@ -8,6 +8,8 @@ import xmltodict as xmlparser
 import slate
 from pypdfocr import pypdfocr as pypdfocr
 
+from time import sleep
+
 import isbnPLUS
 import OpenLibrary
 
@@ -23,24 +25,28 @@ def getPDFContent(path):
 def getTextFromMetadata( path ):
     return getPDFContent(path).encode("ascii", "ignore")
 
-def getTextWithSlate( path ):
-    stripFirstAndLast10Pages( path, '/tmp/stripped.pdf' )
-    f = open('/tmp/stripped.pdf', "r")
+def getTextWithSlate( path, temporary_file_directory = '/tmp' ):
+    tmp_file_path = temporary_file_directory + '/stripped.pdf'
+    stripFirstAndLast10Pages( path, tmp_file_path )
+    sleep(1000)
+    f = open(tmp_file_path, "r")
     texts=slate.PDF(f)
     cnt = ""
     for pg in texts:
         cnt+=pg
     f.close()
-    os.remove('/tmp/stripped.pdf')
+    os.remove(tmp_file_path)
     return cnt
 
-def getTextWithOCR( path ):
-    stripFirstAndLast10Pages( path, '/tmp/stripped.pdf' )
+def getTextWithOCR( path, temporary_file_directory = '/tmp' ):
+    tmp_file_path = temporary_file_directory + '/stripped.pdf'
+    stripFirstAndLast10Pages( path, tmp_file_path )
     ocr = pypdfocr.PyPDFOCR()
-    ocr.go( ['/tmp/stripped.pdf'] )
-    os.remove('/tmp/stripped.pdf')
-    cnt = getTextFromMetadata( '/tmp/stripped_ocr.pdf' )
-    os.remove('/tmp/stripped_ocr.pdf')
+    ocr.go( [tmp_file_path] )
+    os.remove(tmp_file_path)
+    tmp_ocr_path = emporary_file_directory + '/stripped_ocr.pdf'
+    cnt = getTextFromMetadata( tmp_ocr_path )
+    os.remove( tmp_ocr_path )
     return cnt
 
 

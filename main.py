@@ -12,11 +12,15 @@ parser = argparse.ArgumentParser( description="BAO takes a directory that contai
 				"analyzes them, to tag the files with the correct metadata." )
 
 parser.add_argument( 'directory', nargs = 1, type=str, help='The directory that contains the'
-        ' pdf file to analyze', metavar='/directory/' )
+        ' pdf file to analyze', metavar='DIRECTORY' )
 
 parser.add_argument( '-p', '--pattern', nargs = 1,
-         dest='pattern', type=str, required=False, default='*', help='The pattern the file have to match to be'
-         ' analyzed', metavar='path' )
+         dest='pattern', type=str, required=False, default=['*'], help='The pattern the file have to match to be'
+         ' analyzed', metavar='PATTERN' )
+
+parser.add_argument( '--tmp-directory', nargs = 1, dest='tmp_directory', type=str, required=False, 
+                    default=['/tmp/BAO'], help='The directory where all temporary files required by the script are'
+                    ' created.' , metavar='TMP_DIRECTORY' )
 
 args = parser.parse_args()
 
@@ -27,6 +31,9 @@ total_files = 0.0
 metadata = {}
 
 books = []
+
+if not os.path.exists( args.tmp_directory[0] ):
+    os.makedirs( args.tmp_directory[0] )
 
 for path, subdirs, files in os.walk(args.directory[0]):
     for name in files:
@@ -104,7 +111,7 @@ for path, subdirs, files in os.walk(args.directory[0]):
                     print "[ISBNsrch]\tFailed extracting text from metadata."
                     print "[ISBNsrch]\tTrying extracting text with slate."
                     try:
-                        cnt = getTextWithSlate( os.path.join(path, name) )
+                        cnt = getTextWithSlate( os.path.join(path, name), temporary_file_directory = args.tmp_directory[0] )
                         #Frequently slater returns strings with a lot of chr(12) for pdf with no text layer
                         #instead of ''.
                         if len( cnt.replace(chr(12), '' ) ) != 0: 
@@ -120,7 +127,7 @@ for path, subdirs, files in os.walk(args.directory[0]):
                     print "[ISBNsrch]\tNo text layer."
                     print "[ISBNsrch]\tExecuting OCR on first and last 10 pages..."
                     try:
-                        cnt = getTextWithOCR( os.path.join(path, name) )
+                        cnt = getTextWithOCR( os.path.join(path, name), temporary_file_directory = args.tmp_directory[0] )
                         if len( cnt ) != 0:
                             print "[ISBNsrch]\tText layer extracted."
                     except:
@@ -144,6 +151,8 @@ for path, subdirs, files in os.walk(args.directory[0]):
 
                 #Close the file
                 f.close()
+
+os.removedirs( args.tmp_directory[0] )
 
 print "*****FILE TYPE ANALYSIS*****"
 for types in type_stat.keys():
