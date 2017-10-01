@@ -20,6 +20,8 @@ parser.add_argument( '-p', '--pattern', nargs = 1,
 
 args = parser.parse_args()
 
+#----------------------------#
+
 type_stat = {}
 total_files = 0.0
 metadata = {}
@@ -52,7 +54,12 @@ for path, subdirs, files in os.walk(args.directory[0]):
                 current_book = {}
                 current_book['path'] = os.path.join(path, name)
                 f = open( os.path.join(path, name), "rb" )
-                pdf_toread = PdfFileReader( f )
+                try:
+                    pdf_toread = PdfFileReader( f )
+                except:
+                    print "[analyzing]\tPdfFileReader cannot open this file. Skipping analysis."
+                    break
+ 
                 try:
                     if pdf_toread.isEncrypted:
                         pdf_toread.decrypt('')
