@@ -186,10 +186,18 @@ def stripFirstAndLast10Pages( infile, outfile ):
         exit()
 
     stripped_book = PyPDF2.PdfFileWriter()
-    for i in range( 10 ):
-        stripped_book.addPage( book.getPage( i ) )
     num_pg = book.getNumPages()
-    for i in range( 10 ):
-        stripped_book.addPage( book.getPage( num_pg - i - 1 ) )
+
+    #If the book is bigger then 20 pages takes the first and the last 10 otherwise it takes all the pages in the PDF.
+    if num_pg >= 20:
+        for i in range( 10 ):
+            stripped_book.addPage( book.getPage( i ) )
+
+        for i in range( 10 ):
+            stripped_book.addPage( book.getPage( num_pg - i - 1 ) )
+    else:
+        for i in range( num_pg ):
+            stripped_book.addPage( book.getPage( i ) )
+
     stripped_book.write(outf)
     outf.close()
