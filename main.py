@@ -31,10 +31,8 @@ books = []
 for path, subdirs, files in os.walk(args.directory[0]):
     for name in files:
         if fnmatch(name, args.pattern[0]):
-            #print os.path.join(path, name)
-            total_files += 1
-            #file type analysis, the try / except is to manage different version
-            #of the magic library. Should be implemented in a safer way.
+            total_files += 1 #Statistics
+
             try:
                 ftype = magic.from_file( os.path.join(path, name), mime=True)
             except:
@@ -42,42 +40,44 @@ for path, subdirs, files in os.walk(args.directory[0]):
                 ftype = magic.detect_from_fobj( f ).mime_type
                 f.close()
 
-            #print "File type: ", ftype
-            if ftype in type_stat:
+            if ftype in type_stat: #Statistics
                 type_stat[ftype] += 1
             else:
                 type_stat[ftype] = 1.0
 
-            #file metadata analysis
+            #Metadata research for PDF
             if ftype == 'application/pdf':
                 print "[analyzing]\t" + os.path.join(path, name) + " ..."
-                current_book = {}
+
+                current_book = {} #A dictionary containing all the data collected for the book. __TODO__ use a fuckin' database
                 current_book['path'] = os.path.join(path, name)
+
                 f = open( os.path.join(path, name), "rb" )
                 try:
                     pdf_toread = PdfFileReader( f )
                 except:
                     print "[analyzing]\tPdfFileReader cannot open this file. Skipping analysis."
-                    break
+                    break #Pass to the next book
  
-                try:
+                try: #Sometimes this allow to read some PDFs
                     if pdf_toread.isEncrypted:
                         pdf_toread.decrypt('')
                 except:
                     print "[decrypt]\tFailed decryption"
-                try:
+
+                try: #Extract metadata from PDF
                     pdf_info = pdf_toread.getDocumentInfo()
                 except:
                     pdf_info = {}
-
                 if type( pdf_info ) != dict:
                     pdf_info = {}
 
-                for mdt in pdf_info.keys():
+                for mdt in pdf_info.keys(): #Statistics
                     if mdt in metadata:
                         metadata[mdt] += 1
                     else:
                         metadata[mdt] = 1.0
+
                 if '/Author' in pdf_info.keys():
                     current_book['author'] = pdf_info['/Author']
                 else :
@@ -87,29 +87,35 @@ for path, subdirs, files in os.walk(args.directory[0]):
                 else :
                     current_book['title'] = None
 
-                print "[ISBNsrch]\tTrying extracting text from metadata."
+                print "[ISBNsrch]\tTrying extracting text from metadata." 
+                #First strategy: try to extract the ISBN strings from the 'content' metadata
                 try:
                     cnt = getTextFromMetadata( os.path.join(path, name) )
                     if len( cnt ) != 0:
-                        print "[ISBNsrch]\tText layer extracted."
-                    if cnt.find('ISBN') < 0:#Se non c'è nemmeno una ricorrenza di ISBN, provo a estrarre con slater.
+                        print '[ISBNsrch]\tText layer extracted.'
+
+                    if cnt.find('ISBN') < 0:#If there is no recurrency of 'ISBN', try to extract with slater.
                         cnt = ''
                 except:
-                    cnt = ""
+                    cnt = ''
 
                 if len( cnt ) == 0:
+                    #Second strategy: try to extract pdf layer with pdfminer/slater and then look for ISBN
                     print "[ISBNsrch]\tFailed extracting text from metadata."
                     print "[ISBNsrch]\tTrying extracting text with slate."
                     try:
                         cnt = getTextWithSlate( os.path.join(path, name) )
-                        if len( cnt.replace(chr(12), '' ) ) != 0:
+                        #Frequently slater returns strings with a lot of chr(12) for pdf with no text layer
+                        #instead of ''.
+                        if len( cnt.replace(chr(12), '' ) ) != 0: 
                             print "[ISBNsrch]\tText layer extracted."
                         else:
                             cnt = ''
                     except:
-                        cnt = ""
+                        cnt = ''
 
                 if len( cnt ) == 0:
+                    #Last strategy: try to do an OCR on the first 10 pages of the PDF.
                     print "[ISBNsrch]\tFailed extracting text with slate."
                     print "[ISBNsrch]\tNo text layer."
                     print "[ISBNsrch]\tExecuting OCR on first and last 10 pages..."
@@ -118,8 +124,9 @@ for path, subdirs, files in os.walk(args.directory[0]):
                         if len( cnt ) != 0:
                             print "[ISBNsrch]\tText layer extracted."
                     except:
-                        cnt = ""
+                        cnt = ''
 
+                #Once finished, look for ISBN strings in the text
                 if len( cnt ) == 0:
                     print "[ISBNsrch]\tFailed extracting text with Tesseract"
                     ISBNstrings = None
@@ -130,10 +137,12 @@ for path, subdirs, files in os.walk(args.directory[0]):
                     print "[ISBNsrch]\t\x1b[31m No ISBN string found. \x1b[0m"
                 else:
                     print "[ISBNsrch]\t\x1b[34m Found", len(ISBNstrings),"ISBN strings.\x1b[0m"
+                
+                #Replace with database calls
                 current_book['isbn'] = ISBNstrings
-
                 books.append(current_book)
 
+                #Close the file
                 f.close()
 
 print "*****FILE TYPE ANALYSIS*****"
@@ -149,28 +158,3 @@ for mdt in metadata.keys():
 
 print "********************************"
 print
-
-'''for book in books:
-    print book['path']
-    print "\tAuthor:", book['author']
-    print "\tTitle:", book['title']
-    print "\tFound ISBN: "
-    if book['isbn'] is not None:
-        for isbn in book['isbn']:
-            mdt = metadataFromISBN( isbn )
-            if mdt['author'] is not '' and mdt['title'] is not '':
-                print "\x1b[34m",
-            else:
-                print "\x1b[31m",
-            print "\t\t\t",isbn,
-            print "\x1b[0m",
-
-            if mdt['author'] is not '' and mdt['title'] is not '':
-                print "( A:\x1b[33m", mdt['author'], "\x1b[0mT:\x1b[32m", mdt['title'], "\x1b[0m)",
-            #Idee per il consistecy check del libro :
-            #   verifica che il numero di pagine corrisponda ( +- 5% )
-            #   cerca il titolo del libro nel libro stesso e guarda quante ricorrenze ci sono
-            #   cerca il nome dell'autore nel libro e guarda quante ricorrenze ci sono
-            #   se ci sono più ISBN verifica che non siano le versioni 10 e 13 dello stesso libro.
-
-            print'''
